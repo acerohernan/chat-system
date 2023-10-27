@@ -69,6 +69,8 @@ func (c *ChatServer) Start() error {
 
 	c.running.Store(true)
 
+	logger.Infow("server started successfully")
+
 	<-c.doneChann
 
 	// shutdown

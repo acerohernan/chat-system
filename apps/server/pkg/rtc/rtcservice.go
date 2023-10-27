@@ -66,12 +66,13 @@ func (s *RTCService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		delete(s.connections, conn)
 		s.mu.Unlock()
 		close(done)
+		logger.Infow("WS connection finished")
 	}()
 
 	wsClient := NewWsClient(conn)
 
 	s.mu.Lock()
-	logger.Infow("new client ws connected", "address", conn.RemoteAddr(), s.connections)
+	logger.Infow("new client ws connected", "address", conn.RemoteAddr())
 	s.mu.Unlock()
 
 	// handle incoming request from websockets
