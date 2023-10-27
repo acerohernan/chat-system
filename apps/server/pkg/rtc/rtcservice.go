@@ -23,6 +23,10 @@ func NewRTCService() *RTCService {
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
+			CheckOrigin: func(r *http.Request) bool {
+				// allow all origins, we use token for auth
+				return true
+			},
 		},
 		connections: make(map[*websocket.Conn]struct{}),
 		mu:          sync.Mutex{},

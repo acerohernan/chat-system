@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 	"sync/atomic"
@@ -59,13 +60,16 @@ func NewChatServer(config *config.Config, rtcService *rtc.RTCService) *ChatServe
 func (c *ChatServer) Start() error {
 	logger.Infow("starting server...")
 
-	listener, err := net.Listen("tcp", ":3000")
+	port := 3001
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%v", port))
 
 	if err != nil {
 		return err
 	}
 
 	go c.httpServer.Serve(listener)
+
+	logger.Infow("http server running", "port", port)
 
 	c.running.Store(true)
 
