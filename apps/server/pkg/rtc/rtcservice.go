@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/chat-system/server/pkg/logger"
-	protocol "github.com/chat-system/server/proto"
+	core "github.com/chat-system/server/proto"
 	"github.com/gorilla/websocket"
 )
 
@@ -103,10 +103,10 @@ func (s *RTCService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		switch m := req.Message.(type) {
-		case *protocol.SignalRequest_Ping:
+		case *core.SignalRequest_Ping:
 			logger.Debugw("a ping request received", "message", m)
-			_, _ = wsClient.WriteResponse(&protocol.SignalResponse{Message: &protocol.SignalResponse_Pong{
-				Pong: &protocol.Pong{
+			_, _ = wsClient.WriteResponse(&core.SignalResponse{Message: &core.SignalResponse_Pong{
+				Pong: &core.Pong{
 					Timestamp: time.Now().UnixMilli(),
 				},
 			}})

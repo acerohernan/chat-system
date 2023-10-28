@@ -5,7 +5,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/chat-system/server/pkg/auth"
 	"github.com/chat-system/server/pkg/config"
 	"github.com/chat-system/server/pkg/logger"
 	"github.com/chat-system/server/pkg/rtc"
@@ -19,7 +18,9 @@ func main() {
 
 	rtcService := rtc.NewRTCService()
 
-	authService := auth.NewAuthService(config)
+	persistentStorage := service.NewLocalStorage()
+
+	authService := service.NewAuthService(config, persistentStorage)
 
 	server := service.NewChatServer(config, rtcService, authService)
 

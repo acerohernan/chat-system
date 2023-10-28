@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/chat-system/server/pkg/logger"
-	protocol "github.com/chat-system/server/proto"
+	core "github.com/chat-system/server/proto"
 	"github.com/gorilla/websocket"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -34,7 +34,7 @@ func NewWsClient(conn *websocket.Conn) *WsClient {
 	return client
 }
 
-func (c *WsClient) ReadRequest() (*protocol.SignalRequest, int, error) {
+func (c *WsClient) ReadRequest() (*core.SignalRequest, int, error) {
 
 	for {
 		// handle special messages and pass on the rest
@@ -44,7 +44,7 @@ func (c *WsClient) ReadRequest() (*protocol.SignalRequest, int, error) {
 			return nil, 0, err
 		}
 
-		msg := &protocol.SignalRequest{}
+		msg := &core.SignalRequest{}
 
 		switch messageType {
 		case websocket.BinaryMessage:
@@ -74,7 +74,7 @@ func (c *WsClient) ReadRequest() (*protocol.SignalRequest, int, error) {
 	}
 }
 
-func (c *WsClient) WriteResponse(msg *protocol.SignalResponse) (int, error) {
+func (c *WsClient) WriteResponse(msg *core.SignalResponse) (int, error) {
 	var msgType int
 	var payload []byte
 	var err error

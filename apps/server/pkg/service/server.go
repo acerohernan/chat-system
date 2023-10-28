@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"sync/atomic"
 
-	"github.com/chat-system/server/pkg/auth"
 	"github.com/chat-system/server/pkg/config"
 	"github.com/chat-system/server/pkg/logger"
 	"github.com/chat-system/server/pkg/rtc"
@@ -19,14 +18,14 @@ import (
 type ChatServer struct {
 	config      *config.Config
 	rtcService  *rtc.RTCService
-	authService *auth.AuthService
+	authService *AuthService
 	httpServer  *http.Server
 	running     atomic.Bool
 	doneChann   chan struct{}
 	closeChann  chan struct{}
 }
 
-func NewChatServer(config *config.Config, rtcService *rtc.RTCService, authService *auth.AuthService) *ChatServer {
+func NewChatServer(config *config.Config, rtcService *rtc.RTCService, authService *AuthService) *ChatServer {
 	server := &ChatServer{
 		config:      config,
 		rtcService:  rtcService,
@@ -56,6 +55,7 @@ func NewChatServer(config *config.Config, rtcService *rtc.RTCService, authServic
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("OK")) })
 
 	// auth
+	mux.HandleFunc("/auth/complete", server.authService.CompleteRegistrationHTTP).Methods("POST")
 	mux.HandleFunc("/auth/{provider}", server.authService.BeginAuthHTTP)
 	mux.HandleFunc("/auth/{provider}/callback", server.authService.AuthCallbackHTTP)
 
