@@ -5,6 +5,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/chat-system/server/pkg/auth"
 	"github.com/chat-system/server/pkg/config"
 	"github.com/chat-system/server/pkg/logger"
 	"github.com/chat-system/server/pkg/rtc"
@@ -18,7 +19,9 @@ func main() {
 
 	rtcService := rtc.NewRTCService()
 
-	server := service.NewChatServer(config, rtcService)
+	authService := auth.NewAuthService(config)
+
+	server := service.NewChatServer(config, rtcService, authService)
 
 	sigChann := make(chan os.Signal, 1)
 	signal.Notify(sigChann, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)

@@ -7,27 +7,33 @@ import (
 	"net/http"
 	"sync/atomic"
 
+	"github.com/chat-system/server/pkg/auth"
 	"github.com/chat-system/server/pkg/config"
 	"github.com/chat-system/server/pkg/logger"
 	"github.com/chat-system/server/pkg/rtc"
+	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 	"github.com/urfave/negroni"
 )
 
 type ChatServer struct {
-	rtcService *rtc.RTCService
-	httpServer *http.Server
-	running    atomic.Bool
-	doneChann  chan struct{}
-	closeChann chan struct{}
+	config      *config.Config
+	rtcService  *rtc.RTCService
+	authService *auth.AuthService
+	httpServer  *http.Server
+	running     atomic.Bool
+	doneChann   chan struct{}
+	closeChann  chan struct{}
 }
 
-func NewChatServer(config *config.Config, rtcService *rtc.RTCService) *ChatServer {
+func NewChatServer(config *config.Config, rtcService *rtc.RTCService, authService *auth.AuthService) *ChatServer {
 	server := &ChatServer{
-		rtcService: rtcService,
-		running:    atomic.Bool{},
-		doneChann:  make(chan struct{}),
-		closeChann: make(chan struct{}),
+		config:      config,
+		rtcService:  rtcService,
+		authService: authService,
+		running:     atomic.Bool{},
+		doneChann:   make(chan struct{}),
+		closeChann:  make(chan struct{}),
 	}
 
 	middlewares := []negroni.Handler{
@@ -44,11 +50,17 @@ func NewChatServer(config *config.Config, rtcService *rtc.RTCService) *ChatServe
 		}),
 	}
 
-	mux := http.NewServeMux()
-	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("OK"))
-	}))
-	mux.Handle("/rtc", rtcService)
+	mux := mux.NewRouter()
+
+	// health check
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("OK")) })
+
+	// auth
+	mux.HandleFunc("/auth/{provider}", server.authService.BeginAuthHTTP)
+	mux.HandleFunc("/auth/{provider}/callback", server.authService.AuthCallbackHTTP)
+
+	// websocket
+	mux.HandleFunc("/rtc", rtcService.ServeHTTP)
 
 	server.httpServer = &http.Server{
 		Handler: configureMiddlewares(mux, middlewares...),
@@ -60,8 +72,7 @@ func NewChatServer(config *config.Config, rtcService *rtc.RTCService) *ChatServe
 func (c *ChatServer) Start() error {
 	logger.Infow("starting server...")
 
-	port := 3001
-	listener, err := net.Listen("tcp", fmt.Sprintf(":%v", port))
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%v", c.config.Port))
 
 	if err != nil {
 		return err
@@ -69,7 +80,7 @@ func (c *ChatServer) Start() error {
 
 	go c.httpServer.Serve(listener)
 
-	logger.Infow("http server running", "port", port)
+	logger.Infow("http server running", "port", c.config.Port)
 
 	c.running.Store(true)
 
