@@ -20,20 +20,35 @@ type ChatServer struct {
 	rtcService  *rtc.RTCService
 	authService *AuthService
 	httpServer  *http.Server
+	storage     PersistentStorage
 	running     atomic.Bool
 	doneChann   chan struct{}
 	closeChann  chan struct{}
 }
 
-func NewChatServer(config *config.Config, rtcService *rtc.RTCService, authService *AuthService) *ChatServer {
-	server := &ChatServer{
-		config:      config,
-		rtcService:  rtcService,
-		authService: authService,
-		running:     atomic.Bool{},
-		doneChann:   make(chan struct{}),
-		closeChann:  make(chan struct{}),
+func NewChatServer(config *config.Config) (*ChatServer, error) {
+	s := &ChatServer{
+		config:     config,
+		running:    atomic.Bool{},
+		doneChann:  make(chan struct{}),
+		closeChann: make(chan struct{}),
 	}
+
+	s.rtcService = rtc.NewRTCService()
+
+	mc, err := getMongoClient(config.Mongo)
+
+	if err != nil {
+		return nil, err
+	}
+
+	s.storage = NewMongoStorage(config.Mongo, mc)
+
+	if err != nil {
+		return nil, err
+	}
+
+	s.authService = NewAuthService(config, s.storage)
 
 	middlewares := []negroni.Handler{
 		// always first
@@ -55,18 +70,18 @@ func NewChatServer(config *config.Config, rtcService *rtc.RTCService, authServic
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("OK")) })
 
 	// auth
-	mux.HandleFunc("/auth/complete", server.authService.CompleteRegistrationHTTP).Methods("POST")
-	mux.HandleFunc("/auth/{provider}", server.authService.BeginAuthHTTP)
-	mux.HandleFunc("/auth/{provider}/callback", server.authService.AuthCallbackHTTP)
+	mux.HandleFunc("/auth/complete", s.authService.CompleteRegistrationHTTP).Methods("POST")
+	mux.HandleFunc("/auth/{provider}", s.authService.BeginAuthHTTP)
+	mux.HandleFunc("/auth/{provider}/callback", s.authService.AuthCallbackHTTP)
 
 	// websocket
-	mux.HandleFunc("/rtc", rtcService.ServeHTTP)
+	mux.HandleFunc("/rtc", s.rtcService.ServeHTTP)
 
-	server.httpServer = &http.Server{
+	s.httpServer = &http.Server{
 		Handler: configureMiddlewares(mux, middlewares...),
 	}
 
-	return server
+	return s, nil
 }
 
 func (c *ChatServer) Start() error {
@@ -90,6 +105,8 @@ func (c *ChatServer) Start() error {
 
 	// shutdown
 	_ = c.httpServer.Shutdown(context.Background())
+
+	_ = c.storage.Close()
 
 	close(c.closeChann)
 

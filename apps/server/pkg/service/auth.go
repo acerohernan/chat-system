@@ -107,7 +107,7 @@ func (s *AuthService) CompleteRegistrationHTTP(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// validate that is a valid public key
+	// validate if param is a valid publick key
 	block, _ := pem.Decode([]byte(params.PublicKey))
 
 	if block == nil {

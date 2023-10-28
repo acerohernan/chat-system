@@ -7,7 +7,6 @@ import (
 
 	"github.com/chat-system/server/pkg/config"
 	"github.com/chat-system/server/pkg/logger"
-	"github.com/chat-system/server/pkg/rtc"
 	"github.com/chat-system/server/pkg/service"
 )
 
@@ -16,13 +15,12 @@ func main() {
 
 	logger.Init(config.Logger)
 
-	rtcService := rtc.NewRTCService()
+	server, err := service.NewChatServer(config)
 
-	persistentStorage := service.NewLocalStorage()
-
-	authService := service.NewAuthService(config, persistentStorage)
-
-	server := service.NewChatServer(config, rtcService, authService)
+	if err != nil {
+		logger.Errorw("couldn't start the chat server", err)
+		os.Exit(1)
+	}
 
 	sigChann := make(chan os.Signal, 1)
 	signal.Notify(sigChann, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)

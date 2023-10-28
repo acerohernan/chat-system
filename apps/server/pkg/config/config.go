@@ -12,6 +12,7 @@ type Config struct {
 	Redis  *RedisConfig
 	Logger *LoggerConfig
 	Auth   *AuthConfig
+	Mongo  *MongoConfig
 }
 
 type RedisConfig struct {
@@ -27,6 +28,11 @@ type AuthConfig struct {
 	JWTSecret          string
 	GoogleClientId     string
 	GoogleClientSecret string
+}
+
+type MongoConfig struct {
+	URI      string
+	Database string
 }
 
 func NewConfig() *Config {
@@ -46,6 +52,10 @@ func NewConfig() *Config {
 			JWTSecret:          os.Getenv("AUTH_JWT_SECRET"),
 			GoogleClientId:     os.Getenv("AUTH_GOOGLE_CLIENT_ID"),
 			GoogleClientSecret: os.Getenv("AUTH_GOOGLE_CLIENT_SECRET"),
+		},
+		Mongo: &MongoConfig{
+			URI:      os.Getenv("MONGO_URI"),
+			Database: os.Getenv("MONGO_DB"),
 		},
 	}
 }
