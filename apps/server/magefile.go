@@ -4,15 +4,23 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"go/build"
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"github.com/chat-system/server/pkg/config"
+	"github.com/chat-system/server/pkg/service"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func Proto() error {
 	grpcProtoFiles := []string{
+		"models.proto",
 		"rtc.proto",
 	}
 
@@ -53,6 +61,31 @@ func Proto() error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func Mongo() error {
+	// This script will created the first data needed and indexes for query performance
+	config := config.NewConfig()
+
+	client, err := service.GetMongoClient(config.Mongo)
+
+	if err != nil {
+		return err
+	}
+
+	db := client.Database(config.Mongo.Database)
+
+	pubKeysColl := db.Collection(service.PublicKeysCollection)
+
+	_, err = pubKeysColl.Indexes().CreateOne(context.TODO(), mongo.IndexModel{Keys: bson.M{
+		"useremail": 1,
+	}, Options: options.Index().SetUnique(true)})
+
+	if err != nil {
 		return err
 	}
 
