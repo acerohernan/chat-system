@@ -129,13 +129,18 @@ func (s *AuthService) CompleteRegistrationHTTP(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	if key != "" {
+	if key != nil {
 		// don't allow save a new public key to users that has already saved it
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	err = s.persistentStorage.StorePublicKey(core.UserEmail(grants.Email), core.UserPublicKey(params.PublicKey))
+	newKey := &core.PublicKey{
+		UserEmail: grants.Email,
+		Key:       params.PublicKey,
+	}
+
+	err = s.persistentStorage.StorePublicKey(newKey)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

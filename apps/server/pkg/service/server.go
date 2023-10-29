@@ -36,7 +36,7 @@ func NewChatServer(config *config.Config) (*ChatServer, error) {
 
 	s.rtcService = rtc.NewRTCService()
 
-	mc, err := getMongoClient(config.Mongo)
+	mc, err := GetMongoClient(config.Mongo)
 
 	if err != nil {
 		return nil, err

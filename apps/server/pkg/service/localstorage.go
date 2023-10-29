@@ -7,33 +7,33 @@ import (
 )
 
 type LocalStorage struct {
-	publickKeys map[core.UserEmail]core.UserPublicKey
+	publickKeys map[core.UserEmail]*core.PublicKey
 	mu          sync.RWMutex
 }
 
 func NewLocalStorage() *LocalStorage {
 	return &LocalStorage{
-		publickKeys: make(map[core.UserEmail]core.UserPublicKey),
+		publickKeys: make(map[core.UserEmail]*core.PublicKey),
 		mu:          sync.RWMutex{},
 	}
 }
 
-func (s *LocalStorage) StorePublicKey(email core.UserEmail, key core.UserPublicKey) error {
+func (s *LocalStorage) StorePublicKey(key *core.PublicKey) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.publickKeys[email] = key
+	s.publickKeys[core.UserEmail(key.UserEmail)] = key
 	return nil
 }
 
-func (s *LocalStorage) GetPublicKey(email core.UserEmail) (core.UserPublicKey, error) {
+func (s *LocalStorage) GetPublicKey(email core.UserEmail) (*core.PublicKey, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	key := s.publickKeys[email]
 
-	if key == "" {
-		return "", ErrPublicKeyNotFound
+	if key == nil {
+		return nil, ErrPublicKeyNotFound
 	}
 
 	return key, nil

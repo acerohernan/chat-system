@@ -29,10 +29,10 @@ func NewMongoStorage(config *config.MongoConfig, client *mongo.Client) *MongoSto
 	}
 }
 
-func (s *MongoStorage) StorePublicKey(email core.UserEmail, key core.UserPublicKey) error {
+func (s *MongoStorage) StorePublicKey(key *core.PublicKey) error {
 	coll := s.db.Collection(PublicKeysCollection)
 
-	_, err := coll.InsertOne(context.Background(), bson.M{"email": email, "publicKey": key})
+	_, err := coll.InsertOne(context.Background(), key)
 
 	if err != nil {
 		return err
@@ -41,32 +41,29 @@ func (s *MongoStorage) StorePublicKey(email core.UserEmail, key core.UserPublicK
 	return nil
 }
 
-func (s *MongoStorage) GetPublicKey(email core.UserEmail) (core.UserPublicKey, error) {
+func (s *MongoStorage) GetPublicKey(email core.UserEmail) (*core.PublicKey, error) {
 	coll := s.db.Collection(PublicKeysCollection)
 
-	result := struct {
-		Email     string `json:"email"`
-		PublicKey string `json:"publicKey"`
-	}{}
+	key := &core.PublicKey{}
 
-	err := coll.FindOne(context.Background(), bson.D{{Key: "email", Value: email}}).Decode(&result)
+	err := coll.FindOne(context.Background(), bson.D{{Key: "useremail", Value: email}}).Decode(key)
 
 	if err == mongo.ErrNoDocuments {
-		return "", ErrPublicKeyNotFound
+		return nil, ErrPublicKeyNotFound
 	}
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return core.UserPublicKey(result.PublicKey), nil
+	return key, nil
 }
 
 func (s *MongoStorage) Close() error {
 	return s.client.Disconnect(context.TODO())
 }
 
-func getMongoClient(config *config.MongoConfig) (*mongo.Client, error) {
+func GetMongoClient(config *config.MongoConfig) (*mongo.Client, error) {
 	logger.Infow("connecting to mongo db...")
 
 	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(config.URI))
