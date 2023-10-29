@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package core;
+
+option go_package = "github.com/chat-system/core";
+
+message PublicKey {
+    string user_email = 1;
+    string key = 2;
+}
+
+message PendingMessage {
+    string user_email = 1;
+    string sender_email = 2;
+    string content = 3;
+}
