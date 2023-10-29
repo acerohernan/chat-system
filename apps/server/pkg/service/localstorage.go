@@ -7,34 +7,54 @@ import (
 )
 
 type LocalStorage struct {
-	publickKeys map[core.UserEmail]*core.PublicKey
-	mu          sync.RWMutex
+	users        map[core.UserId]*core.User
+	usersByEmail map[core.UserEmail]*core.User
+	mu           sync.RWMutex
 }
 
 func NewLocalStorage() *LocalStorage {
 	return &LocalStorage{
-		publickKeys: make(map[core.UserEmail]*core.PublicKey),
-		mu:          sync.RWMutex{},
+		users:        make(map[core.UserId]*core.User),
+		usersByEmail: make(map[core.UserEmail]*core.User),
+		mu:           sync.RWMutex{},
 	}
 }
 
-func (s *LocalStorage) StorePublicKey(key *core.PublicKey) error {
+func (s *LocalStorage) StoreUser(user *core.User) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.publickKeys[core.UserEmail(key.UserEmail)] = key
+	s.users[core.UserId(user.Id)] = user
+	s.usersByEmail[core.UserEmail(user.Email)] = user
 	return nil
 }
 
-func (s *LocalStorage) GetPublicKey(email core.UserEmail) (*core.PublicKey, error) {
+func (s *LocalStorage) GetUser(id core.UserId) (*core.User, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	key := s.publickKeys[email]
+	user := s.users[id]
 
-	if key == nil {
-		return nil, ErrPublicKeyNotFound
+	if user == nil {
+		return nil, ErrUserNotFound
 	}
 
-	return key, nil
+	return user, nil
+}
+
+func (s *LocalStorage) GetUserWithEmail(email core.UserEmail) (*core.User, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	user := s.usersByEmail[email]
+
+	if user == nil {
+		return nil, ErrUserNotFound
+	}
+
+	return user, nil
+}
+
+func (s *LocalStorage) Close() error {
+	return nil
 }

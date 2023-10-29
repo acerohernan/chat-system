@@ -44,10 +44,6 @@ func NewChatServer(config *config.Config) (*ChatServer, error) {
 
 	s.storage = NewMongoStorage(config.Mongo, mc)
 
-	if err != nil {
-		return nil, err
-	}
-
 	s.authService = NewAuthService(config, s.storage)
 
 	middlewares := []negroni.Handler{

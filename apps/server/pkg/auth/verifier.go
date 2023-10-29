@@ -64,6 +64,7 @@ func (v *Verifier) ParseToken(rawJWT string) (*AccessToken, error) {
 	if grants, ok := claims["grants"].(map[string]any); ok {
 		return &AccessToken{
 			Grants: &Grants{
+				Id:             grants["id"].(string),
 				Email:          grants["email"].(string),
 				CanSendMessage: grants["canSendMessage"].(bool),
 			},

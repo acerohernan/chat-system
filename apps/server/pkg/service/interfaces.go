@@ -3,8 +3,9 @@ package service
 import core "github.com/chat-system/server/proto"
 
 type PersistentStorage interface {
-	StorePublicKey(key *core.PublicKey) error
-	GetPublicKey(email core.UserEmail) (*core.PublicKey, error)
+	StoreUser(user *core.User) error
+	GetUser(id core.UserId) (*core.User, error)
+	GetUserWithEmail(email core.UserEmail) (*core.User, error)
 
 	// close active client connections
 	Close() error

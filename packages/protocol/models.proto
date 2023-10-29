@@ -4,13 +4,15 @@ package core;
 
 option go_package = "github.com/chat-system/core";
 
-message PublicKey {
-    string user_email = 1;
-    string key = 2;
+message User {
+    string id = 1;
+    string email = 2;
+    string public_key = 3;
 }
 
 message PendingMessage {
-    string user_email = 1;
-    string sender_email = 2;
+    string user_id = 1;
+    string sender_id = 2;
     string content = 3;
+    uint64 sended_at = 4;
 }

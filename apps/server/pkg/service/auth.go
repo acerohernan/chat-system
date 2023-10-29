@@ -10,6 +10,7 @@ import (
 
 	"github.com/chat-system/server/pkg/auth"
 	"github.com/chat-system/server/pkg/config"
+	"github.com/chat-system/server/pkg/utils"
 	core "github.com/chat-system/server/proto"
 	"github.com/gorilla/sessions"
 	"github.com/markbates/goth"
@@ -58,20 +59,27 @@ func (s *AuthService) AuthCallbackHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	canSendMessage := true
+	var UserId string
+	var canSendMessage bool
 
-	_, err = s.persistentStorage.GetPublicKey(core.UserEmail(user.Email))
+	dbUser, err := s.persistentStorage.GetUserWithEmail(core.UserEmail(user.Email))
 
-	if err != nil {
-		if err == ErrPublicKeyNotFound {
-			canSendMessage = false
-		} else {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
+	if err != nil && err != ErrUserNotFound {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if dbUser != nil {
+		UserId = dbUser.Id
+		canSendMessage = true
+	} else {
+		UserId = utils.NewGuid(utils.UserPrefix)
+		// don't allow to send message until finish registration
+		canSendMessage = false
 	}
 
 	token, err := s.verifier.CreateToken(&auth.Grants{
+		Id:             UserId,
 		Email:          user.Email,
 		CanSendMessage: canSendMessage,
 	})
@@ -122,25 +130,26 @@ func (s *AuthService) CompleteRegistrationHTTP(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	key, err := s.persistentStorage.GetPublicKey(core.UserEmail(grants.Email))
+	dbUser, err := s.persistentStorage.GetUser(core.UserId(grants.Id))
 
-	if err != nil && err != ErrPublicKeyNotFound {
+	if err != nil && err != ErrUserNotFound {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	if key != nil {
-		// don't allow save a new public key to users that has already saved it
+	if dbUser != nil {
+		// if the user is created, reject request
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	newKey := &core.PublicKey{
-		UserEmail: grants.Email,
-		Key:       params.PublicKey,
+	user := &core.User{
+		Id:        grants.Id,
+		Email:     grants.Email,
+		PublicKey: params.PublicKey,
 	}
 
-	err = s.persistentStorage.StorePublicKey(newKey)
+	err = s.persistentStorage.StoreUser(user)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

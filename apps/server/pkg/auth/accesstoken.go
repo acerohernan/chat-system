@@ -6,6 +6,7 @@ type AccessToken struct {
 }
 
 type Grants struct {
+	Id             string `json:"id"`
 	Email          string `json:"email"`
 	CanSendMessage bool   `json:"canSendMessage"`
 }

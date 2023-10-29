@@ -13,6 +13,7 @@ import (
 
 var (
 	PublicKeysCollection = "public_keys"
+	UsersCollection      = "users"
 )
 
 type MongoStorage struct {
@@ -29,10 +30,10 @@ func NewMongoStorage(config *config.MongoConfig, client *mongo.Client) *MongoSto
 	}
 }
 
-func (s *MongoStorage) StorePublicKey(key *core.PublicKey) error {
-	coll := s.db.Collection(PublicKeysCollection)
+func (s *MongoStorage) StoreUser(user *core.User) error {
+	coll := s.db.Collection(UsersCollection)
 
-	_, err := coll.InsertOne(context.Background(), key)
+	_, err := coll.InsertOne(context.Background(), user)
 
 	if err != nil {
 		return err
@@ -41,22 +42,40 @@ func (s *MongoStorage) StorePublicKey(key *core.PublicKey) error {
 	return nil
 }
 
-func (s *MongoStorage) GetPublicKey(email core.UserEmail) (*core.PublicKey, error) {
-	coll := s.db.Collection(PublicKeysCollection)
+func (s *MongoStorage) GetUser(id core.UserId) (*core.User, error) {
+	coll := s.db.Collection(UsersCollection)
 
-	key := &core.PublicKey{}
+	u := &core.User{}
 
-	err := coll.FindOne(context.Background(), bson.D{{Key: "useremail", Value: email}}).Decode(key)
+	err := coll.FindOne(context.Background(), bson.D{{Key: "id", Value: id}}).Decode(u)
 
 	if err == mongo.ErrNoDocuments {
-		return nil, ErrPublicKeyNotFound
+		return nil, ErrUserNotFound
 	}
 
 	if err != nil {
 		return nil, err
 	}
 
-	return key, nil
+	return u, nil
+}
+
+func (s *MongoStorage) GetUserWithEmail(email core.UserEmail) (*core.User, error) {
+	coll := s.db.Collection(UsersCollection)
+
+	u := &core.User{}
+
+	err := coll.FindOne(context.Background(), bson.D{{Key: "email", Value: email}}).Decode(u)
+
+	if err == mongo.ErrNoDocuments {
+		return nil, ErrUserNotFound
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return u, nil
 }
 
 func (s *MongoStorage) Close() error {
