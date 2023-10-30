@@ -6,8 +6,8 @@ import (
 	"syscall"
 
 	"github.com/chat-system/server/pkg/config"
-	"github.com/chat-system/server/pkg/logger"
-	"github.com/chat-system/server/pkg/service"
+	"github.com/chat-system/server/pkg/config/logger"
+	"github.com/chat-system/server/pkg/server"
 )
 
 func main() {
@@ -15,7 +15,7 @@ func main() {
 
 	logger.Init(config.Logger)
 
-	server, err := service.NewChatServer(config)
+	server, err := server.InitializeServer(config)
 
 	if err != nil {
 		logger.Errorw("couldn't start the chat server", err)

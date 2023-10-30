@@ -1,4 +1,4 @@
-package service
+package auth
 
 import (
 	"crypto/x509"
@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/chat-system/server/pkg/auth"
 	"github.com/chat-system/server/pkg/config"
+	"github.com/chat-system/server/pkg/service"
 	"github.com/chat-system/server/pkg/utils"
 	core "github.com/chat-system/server/proto"
 	"github.com/gorilla/sessions"
@@ -20,11 +20,11 @@ import (
 
 type AuthService struct {
 	config            *config.AuthConfig
-	persistentStorage PersistentStorage
-	verifier          *auth.Verifier
+	persistentStorage service.PersistentStorage
+	verifier          *Verifier
 }
 
-func NewAuthService(config *config.Config, persistentStorage PersistentStorage) *AuthService {
+func NewAuthService(config *config.Config, persistentStorage service.PersistentStorage) *AuthService {
 	// setup oauth providers
 	goth.UseProviders(
 		google.New(config.Auth.GoogleClientId, config.Auth.GoogleClientSecret, config.Host+"/auth/google/callback", "email", "profile"),
@@ -37,7 +37,7 @@ func NewAuthService(config *config.Config, persistentStorage PersistentStorage) 
 	return &AuthService{
 		config:            config.Auth,
 		persistentStorage: persistentStorage,
-		verifier:          auth.NewVerifier(config.Auth.JWTIssuer, config.Auth.JWTSecret),
+		verifier:          NewVerifier(config.Auth.JWTIssuer, config.Auth.JWTSecret),
 	}
 }
 
@@ -64,7 +64,7 @@ func (s *AuthService) AuthCallbackHTTP(w http.ResponseWriter, r *http.Request) {
 
 	dbUser, err := s.persistentStorage.GetUserWithEmail(core.UserEmail(user.Email))
 
-	if err != nil && err != ErrUserNotFound {
+	if err != nil && err != service.ErrUserNotFound {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -78,7 +78,7 @@ func (s *AuthService) AuthCallbackHTTP(w http.ResponseWriter, r *http.Request) {
 		canSendMessage = false
 	}
 
-	token, err := s.verifier.CreateToken(&auth.Grants{
+	token, err := s.verifier.CreateToken(&Grants{
 		Id:             UserId,
 		Email:          user.Email,
 		CanSendMessage: canSendMessage,
@@ -132,7 +132,7 @@ func (s *AuthService) CompleteRegistrationHTTP(w http.ResponseWriter, r *http.Re
 
 	dbUser, err := s.persistentStorage.GetUser(core.UserId(grants.Id))
 
-	if err != nil && err != ErrUserNotFound {
+	if err != nil && err != service.ErrUserNotFound {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -159,24 +159,24 @@ func (s *AuthService) CompleteRegistrationHTTP(w http.ResponseWriter, r *http.Re
 	w.WriteHeader(http.StatusOK)
 }
 
-func (s *AuthService) validateToken(r *http.Request) (*auth.Grants, error) {
+func (s *AuthService) validateToken(r *http.Request) (*Grants, error) {
 	header := r.Header.Get("Authorization")
 
 	if header == "" {
-		return nil, auth.ErrInvalidAccessToken
+		return nil, ErrInvalidAccessToken
 	}
 
 	rawJWT, prefixFound := strings.CutPrefix(header, "Bearer ")
 
 	if !prefixFound {
-		return nil, auth.ErrInvalidAccessToken
+		return nil, ErrInvalidAccessToken
 	}
 
 	// validate authenticity
 	accessToken, err := s.verifier.ParseToken(rawJWT)
 
 	if err != nil {
-		return nil, auth.ErrInvalidAccessToken
+		return nil, ErrInvalidAccessToken
 	}
 
 	return accessToken.Grants, nil

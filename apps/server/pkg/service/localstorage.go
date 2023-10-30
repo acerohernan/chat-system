@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"sync"
 
 	core "github.com/chat-system/server/proto"
@@ -55,6 +56,6 @@ func (s *LocalStorage) GetUserWithEmail(email core.UserEmail) (*core.User, error
 	return user, nil
 }
 
-func (s *LocalStorage) Close() error {
+func (s *LocalStorage) Close(_ context.Context) error {
 	return nil
 }

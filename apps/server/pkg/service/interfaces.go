@@ -1,6 +1,10 @@
 package service
 
-import core "github.com/chat-system/server/proto"
+import (
+	"context"
+
+	core "github.com/chat-system/server/proto"
+)
 
 type PersistentStorage interface {
 	StoreUser(user *core.User) error
@@ -8,7 +12,7 @@ type PersistentStorage interface {
 	GetUserWithEmail(email core.UserEmail) (*core.User, error)
 
 	// close active client connections
-	Close() error
+	Close(ctx context.Context) error
 }
 
 type InMemoryStorage interface {

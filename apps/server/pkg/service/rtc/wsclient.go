@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/chat-system/server/pkg/logger"
+	"github.com/chat-system/server/pkg/config/logger"
 	core "github.com/chat-system/server/proto"
 	"github.com/gorilla/websocket"
 	"google.golang.org/protobuf/encoding/protojson"

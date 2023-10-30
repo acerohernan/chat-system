@@ -13,6 +13,7 @@ import (
 
 	"github.com/chat-system/server/pkg/config"
 	"github.com/chat-system/server/pkg/service"
+	"github.com/livekit/mageutil"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -71,7 +72,7 @@ func Mongo() error {
 	// This script will created the first data needed and indexes for query performance
 	config := config.NewConfig()
 
-	client, err := service.GetMongoClient(config.Mongo)
+	client, err := service.GetMongoClient(config)
 
 	if err != nil {
 		return err
@@ -86,6 +87,24 @@ func Mongo() error {
 	}, Options: options.Index().SetUnique(true)})
 
 	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// code generation for wiring
+func Wire() error {
+	fmt.Println("wiring...")
+
+	wire, err := mageutil.GetToolPath("wire")
+	if err != nil {
+		return err
+	}
+	cmd := exec.Command(wire)
+	cmd.Dir = "pkg/server"
+	mageutil.ConnectStd(cmd)
+	if err := cmd.Run(); err != nil {
 		return err
 	}
 

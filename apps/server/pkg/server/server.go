@@ -1,4 +1,4 @@
-package service
+package server
 
 import (
 	"context"
@@ -6,10 +6,13 @@ import (
 	"net"
 	"net/http"
 	"sync/atomic"
+	"time"
 
 	"github.com/chat-system/server/pkg/config"
-	"github.com/chat-system/server/pkg/logger"
-	"github.com/chat-system/server/pkg/rtc"
+	"github.com/chat-system/server/pkg/config/logger"
+	"github.com/chat-system/server/pkg/service"
+	"github.com/chat-system/server/pkg/service/auth"
+	"github.com/chat-system/server/pkg/service/rtc"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 	"github.com/urfave/negroni"
@@ -18,33 +21,24 @@ import (
 type ChatServer struct {
 	config      *config.Config
 	rtcService  *rtc.RTCService
-	authService *AuthService
+	authService *auth.AuthService
 	httpServer  *http.Server
-	storage     PersistentStorage
+	storage     service.PersistentStorage
 	running     atomic.Bool
 	doneChann   chan struct{}
 	closeChann  chan struct{}
 }
 
-func NewChatServer(config *config.Config) (*ChatServer, error) {
+func NewChatServer(config *config.Config, rtcService *rtc.RTCService, authService *auth.AuthService, storage service.PersistentStorage) (*ChatServer, error) {
 	s := &ChatServer{
-		config:     config,
-		running:    atomic.Bool{},
-		doneChann:  make(chan struct{}),
-		closeChann: make(chan struct{}),
+		config:      config,
+		running:     atomic.Bool{},
+		doneChann:   make(chan struct{}),
+		closeChann:  make(chan struct{}),
+		rtcService:  rtcService,
+		authService: authService,
+		storage:     storage,
 	}
-
-	s.rtcService = rtc.NewRTCService()
-
-	mc, err := GetMongoClient(config.Mongo)
-
-	if err != nil {
-		return nil, err
-	}
-
-	s.storage = NewMongoStorage(config.Mongo, mc)
-
-	s.authService = NewAuthService(config, s.storage)
 
 	middlewares := []negroni.Handler{
 		// always first
@@ -100,9 +94,13 @@ func (c *ChatServer) Start() error {
 	<-c.doneChann
 
 	// shutdown
-	_ = c.httpServer.Shutdown(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 
-	_ = c.storage.Close()
+	_ = c.httpServer.Shutdown(ctx)
+
+	_ = c.storage.Close(ctx)
+
+	cancel()
 
 	close(c.closeChann)
 
