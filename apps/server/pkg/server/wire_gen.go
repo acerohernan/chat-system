@@ -8,23 +8,22 @@ package server
 
 import (
 	"github.com/chat-system/server/pkg/config"
+	"github.com/chat-system/server/pkg/controllers"
 	"github.com/chat-system/server/pkg/service"
-	"github.com/chat-system/server/pkg/service/auth"
-	"github.com/chat-system/server/pkg/service/rtc"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // Injectors from wire.go:
 
 func InitializeServer(conf *config.Config) (*ChatServer, error) {
-	rtcService := rtc.NewRTCService()
+	rtcController := controllers.NewRTCController()
 	client, err := service.GetMongoClient(conf)
 	if err != nil {
 		return nil, err
 	}
 	persistentStorage := createStorage(conf, client)
-	authService := auth.NewAuthService(conf, persistentStorage)
-	chatServer, err := NewChatServer(conf, rtcService, authService, persistentStorage)
+	authController := controllers.NewAuthController(conf, persistentStorage)
+	chatServer, err := NewChatServer(conf, rtcController, authController, persistentStorage)
 	if err != nil {
 		return nil, err
 	}

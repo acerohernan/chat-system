@@ -1,4 +1,4 @@
-package auth
+package controllers
 
 import (
 	"crypto/x509"
@@ -10,6 +10,7 @@ import (
 
 	"github.com/chat-system/server/pkg/config"
 	"github.com/chat-system/server/pkg/service"
+	"github.com/chat-system/server/pkg/service/auth"
 	"github.com/chat-system/server/pkg/utils"
 	core "github.com/chat-system/server/proto"
 	"github.com/gorilla/sessions"
@@ -18,35 +19,34 @@ import (
 	"github.com/markbates/goth/providers/google"
 )
 
-type AuthService struct {
-	config            *config.AuthConfig
-	persistentStorage service.PersistentStorage
-	verifier          *Verifier
+type AuthController struct {
+	config   *config.AuthConfig
+	storage  service.PersistentStorage
+	verifier *auth.Verifier
 }
 
-func NewAuthService(config *config.Config, persistentStorage service.PersistentStorage) *AuthService {
+func NewAuthController(config *config.Config, storage service.PersistentStorage) *AuthController {
 	// setup oauth providers
 	goth.UseProviders(
 		google.New(config.Auth.GoogleClientId, config.Auth.GoogleClientSecret, config.Host+"/auth/google/callback", "email", "profile"),
 	)
 
-	// do not store session in cookies, we'll handle sessions with jwt
 	store := sessions.NewCookieStore([]byte(config.Auth.JWTSecret))
 	gothic.Store = store
 
-	return &AuthService{
-		config:            config.Auth,
-		persistentStorage: persistentStorage,
-		verifier:          NewVerifier(config.Auth.JWTIssuer, config.Auth.JWTSecret),
+	return &AuthController{
+		config:   config.Auth,
+		storage:  storage,
+		verifier: auth.NewVerifier(config.Auth.JWTIssuer, config.Auth.JWTSecret),
 	}
 }
 
-func (s *AuthService) BeginAuthHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *AuthController) BeginAuthHTTP(w http.ResponseWriter, r *http.Request) {
 	gothic.BeginAuthHandler(w, r)
 	return
 }
 
-func (s *AuthService) AuthCallbackHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *AuthController) AuthCallbackHTTP(w http.ResponseWriter, r *http.Request) {
 	user, err := gothic.CompleteUserAuth(w, r)
 
 	if err != nil {
@@ -62,7 +62,7 @@ func (s *AuthService) AuthCallbackHTTP(w http.ResponseWriter, r *http.Request) {
 	var UserId string
 	var canSendMessage bool
 
-	dbUser, err := s.persistentStorage.GetUserWithEmail(core.UserEmail(user.Email))
+	dbUser, err := s.storage.GetUserWithEmail(core.UserEmail(user.Email))
 
 	if err != nil && err != service.ErrUserNotFound {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -78,7 +78,7 @@ func (s *AuthService) AuthCallbackHTTP(w http.ResponseWriter, r *http.Request) {
 		canSendMessage = false
 	}
 
-	token, err := s.verifier.CreateToken(&Grants{
+	token, err := s.verifier.CreateToken(&auth.Grants{
 		Id:             UserId,
 		Email:          user.Email,
 		CanSendMessage: canSendMessage,
@@ -97,7 +97,7 @@ type CompleteRegistrationParams struct {
 	PublicKey string `json:"publicKey"`
 }
 
-func (s *AuthService) CompleteRegistrationHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *AuthController) CompleteRegistrationHTTP(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	grants, err := s.validateToken(r)
@@ -130,7 +130,7 @@ func (s *AuthService) CompleteRegistrationHTTP(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	dbUser, err := s.persistentStorage.GetUser(core.UserId(grants.Id))
+	dbUser, err := s.storage.GetUser(core.UserId(grants.Id))
 
 	if err != nil && err != service.ErrUserNotFound {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -149,7 +149,7 @@ func (s *AuthService) CompleteRegistrationHTTP(w http.ResponseWriter, r *http.Re
 		PublicKey: params.PublicKey,
 	}
 
-	err = s.persistentStorage.StoreUser(user)
+	err = s.storage.StoreUser(user)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -159,24 +159,24 @@ func (s *AuthService) CompleteRegistrationHTTP(w http.ResponseWriter, r *http.Re
 	w.WriteHeader(http.StatusOK)
 }
 
-func (s *AuthService) validateToken(r *http.Request) (*Grants, error) {
+func (s *AuthController) validateToken(r *http.Request) (*auth.Grants, error) {
 	header := r.Header.Get("Authorization")
 
 	if header == "" {
-		return nil, ErrInvalidAccessToken
+		return nil, auth.ErrInvalidAccessToken
 	}
 
 	rawJWT, prefixFound := strings.CutPrefix(header, "Bearer ")
 
 	if !prefixFound {
-		return nil, ErrInvalidAccessToken
+		return nil, auth.ErrInvalidAccessToken
 	}
 
 	// validate authenticity
 	accessToken, err := s.verifier.ParseToken(rawJWT)
 
 	if err != nil {
-		return nil, ErrInvalidAccessToken
+		return nil, auth.ErrInvalidAccessToken
 	}
 
 	return accessToken.Grants, nil

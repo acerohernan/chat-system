@@ -10,34 +10,33 @@ import (
 
 	"github.com/chat-system/server/pkg/config"
 	"github.com/chat-system/server/pkg/config/logger"
+	"github.com/chat-system/server/pkg/controllers"
 	"github.com/chat-system/server/pkg/service"
-	"github.com/chat-system/server/pkg/service/auth"
-	"github.com/chat-system/server/pkg/service/rtc"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 	"github.com/urfave/negroni"
 )
 
 type ChatServer struct {
-	config      *config.Config
-	rtcService  *rtc.RTCService
-	authService *auth.AuthService
-	httpServer  *http.Server
-	storage     service.PersistentStorage
-	running     atomic.Bool
-	doneChann   chan struct{}
-	closeChann  chan struct{}
+	config     *config.Config
+	rtcCntr    *controllers.RTCController
+	authCntr   *controllers.AuthController
+	httpServer *http.Server
+	storage    service.PersistentStorage
+	running    atomic.Bool
+	doneChann  chan struct{}
+	closeChann chan struct{}
 }
 
-func NewChatServer(config *config.Config, rtcService *rtc.RTCService, authService *auth.AuthService, storage service.PersistentStorage) (*ChatServer, error) {
+func NewChatServer(config *config.Config, rtcCntr *controllers.RTCController, authCntr *controllers.AuthController, storage service.PersistentStorage) (*ChatServer, error) {
 	s := &ChatServer{
-		config:      config,
-		running:     atomic.Bool{},
-		doneChann:   make(chan struct{}),
-		closeChann:  make(chan struct{}),
-		rtcService:  rtcService,
-		authService: authService,
-		storage:     storage,
+		config:     config,
+		running:    atomic.Bool{},
+		doneChann:  make(chan struct{}),
+		closeChann: make(chan struct{}),
+		storage:    storage,
+		rtcCntr:    rtcCntr,
+		authCntr:   authCntr,
 	}
 
 	middlewares := []negroni.Handler{
@@ -60,12 +59,12 @@ func NewChatServer(config *config.Config, rtcService *rtc.RTCService, authServic
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("OK")) })
 
 	// auth
-	mux.HandleFunc("/auth/complete", s.authService.CompleteRegistrationHTTP).Methods("POST")
-	mux.HandleFunc("/auth/{provider}", s.authService.BeginAuthHTTP)
-	mux.HandleFunc("/auth/{provider}/callback", s.authService.AuthCallbackHTTP)
+	mux.HandleFunc("/auth/complete", s.authCntr.CompleteRegistrationHTTP).Methods("POST")
+	mux.HandleFunc("/auth/{provider}", s.authCntr.BeginAuthHTTP)
+	mux.HandleFunc("/auth/{provider}/callback", s.authCntr.AuthCallbackHTTP)
 
 	// websocket
-	mux.HandleFunc("/rtc", s.rtcService.ServeHTTP)
+	mux.HandleFunc("/rtc", s.rtcCntr.ServeHTTP)
 
 	s.httpServer = &http.Server{
 		Handler: configureMiddlewares(mux, middlewares...),

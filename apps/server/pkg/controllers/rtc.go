@@ -1,4 +1,4 @@
-package rtc
+package controllers
 
 import (
 	"io"
@@ -8,18 +8,19 @@ import (
 	"time"
 
 	"github.com/chat-system/server/pkg/config/logger"
+	"github.com/chat-system/server/pkg/service/rtc"
 	core "github.com/chat-system/server/proto"
 	"github.com/gorilla/websocket"
 )
 
-type RTCService struct {
+type RTCController struct {
 	upgrader    websocket.Upgrader
 	mu          sync.Mutex
 	connections map[*websocket.Conn]struct{}
 }
 
-func NewRTCService() *RTCService {
-	return &RTCService{
+func NewRTCController() *RTCController {
+	return &RTCController{
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
@@ -33,7 +34,7 @@ func NewRTCService() *RTCService {
 	}
 }
 
-func (s *RTCService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *RTCController) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// reject non websocket requests
 	if !websocket.IsWebSocketUpgrade(r) {
 		w.WriteHeader(404)
@@ -73,7 +74,7 @@ func (s *RTCService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		logger.Infow("WS connection finished")
 	}()
 
-	wsClient := NewWsClient(conn)
+	wsClient := rtc.NewWsClient(conn)
 
 	s.mu.Lock()
 	logger.Infow("new client ws connected", "address", conn.RemoteAddr())
@@ -114,11 +115,11 @@ func (s *RTCService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *RTCService) validateToken(r *http.Request) error {
+func (s *RTCController) validateToken(r *http.Request) error {
 	return nil
 }
 
-func (*RTCService) handleError(w http.ResponseWriter, status int, err error, keysAndValues ...interface{}) {
+func (*RTCController) handleError(w http.ResponseWriter, status int, err error, keysAndValues ...interface{}) {
 	logger.Errorw("error in handling connection", err)
 	w.WriteHeader(status)
 	_, _ = w.Write([]byte(err.Error()))
