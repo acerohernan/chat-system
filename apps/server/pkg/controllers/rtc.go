@@ -34,7 +34,7 @@ func NewRTCController() *RTCController {
 	}
 }
 
-func (s *RTCController) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *RTCController) Serve(w http.ResponseWriter, r *http.Request) {
 	// reject non websocket requests
 	if !websocket.IsWebSocketUpgrade(r) {
 		w.WriteHeader(404)

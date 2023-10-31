@@ -25,7 +25,7 @@ type AuthController struct {
 	verifier *auth.Verifier
 }
 
-func NewAuthController(config *config.Config, storage service.PersistentStorage) *AuthController {
+func NewAuthController(config *config.Config, verifier *auth.Verifier, storage service.PersistentStorage) *AuthController {
 	// setup oauth providers
 	goth.UseProviders(
 		google.New(config.Auth.GoogleClientId, config.Auth.GoogleClientSecret, config.Host+"/auth/google/callback", "email", "profile"),
@@ -37,16 +37,16 @@ func NewAuthController(config *config.Config, storage service.PersistentStorage)
 	return &AuthController{
 		config:   config.Auth,
 		storage:  storage,
-		verifier: auth.NewVerifier(config.Auth.JWTIssuer, config.Auth.JWTSecret),
+		verifier: verifier,
 	}
 }
 
-func (s *AuthController) BeginAuthHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *AuthController) BeginAuth(w http.ResponseWriter, r *http.Request) {
 	gothic.BeginAuthHandler(w, r)
 	return
 }
 
-func (s *AuthController) AuthCallbackHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *AuthController) AuthCallback(w http.ResponseWriter, r *http.Request) {
 	user, err := gothic.CompleteUserAuth(w, r)
 
 	if err != nil {
@@ -97,7 +97,7 @@ type CompleteRegistrationParams struct {
 	PublicKey string `json:"publicKey"`
 }
 
-func (s *AuthController) CompleteRegistrationHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *AuthController) CompleteRegistration(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	grants, err := s.validateToken(r)

@@ -10,6 +10,7 @@ import (
 	"github.com/chat-system/server/pkg/config"
 	"github.com/chat-system/server/pkg/controllers"
 	"github.com/chat-system/server/pkg/service"
+	"github.com/chat-system/server/pkg/service/auth"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -17,13 +18,15 @@ import (
 
 func InitializeServer(conf *config.Config) (*ChatServer, error) {
 	rtcController := controllers.NewRTCController()
+	verifier := auth.NewVerifier(conf)
 	client, err := service.GetMongoClient(conf)
 	if err != nil {
 		return nil, err
 	}
 	persistentStorage := createStorage(conf, client)
-	authController := controllers.NewAuthController(conf, persistentStorage)
-	chatServer, err := NewChatServer(conf, rtcController, authController, persistentStorage)
+	authController := controllers.NewAuthController(conf, verifier, persistentStorage)
+	userController := controllers.NewUserController(persistentStorage, verifier)
+	chatServer, err := NewChatServer(conf, rtcController, authController, userController, persistentStorage)
 	if err != nil {
 		return nil, err
 	}

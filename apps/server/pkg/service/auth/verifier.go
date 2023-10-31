@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/chat-system/server/pkg/config"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -17,10 +18,10 @@ type Verifier struct {
 	secret string
 }
 
-func NewVerifier(issuer string, secret string) *Verifier {
+func NewVerifier(conf *config.Config) *Verifier {
 	return &Verifier{
-		secret: secret,
-		issuer: issuer,
+		issuer: conf.Auth.JWTIssuer,
+		secret: conf.Auth.JWTSecret,
 	}
 }
 
