@@ -1,16 +1,9 @@
-import { useEffect } from "react";
-import { Chat } from "./lib/Chat";
+import { RouterProvider } from "react-router-dom";
+
+import { router } from "./router";
 
 function App() {
-  useEffect(() => {
-    const url = "ws://localhost:3001/rtc";
-
-    const chat = new Chat();
-
-    chat.connect(url, "token");
-  }, []);
-
-  return <div>Hello world</div>;
+  return <RouterProvider router={router} />;
 }
 
 export default App;
