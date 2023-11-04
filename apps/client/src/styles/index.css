@@ -71,7 +71,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-slate-200 text-foreground;
-    font-family: "Space Grotesk", sans-serif;
+    @apply bg-bg_prim text-foreground;
+    font-family: "Roboto", sans-serif;
   }
 }
